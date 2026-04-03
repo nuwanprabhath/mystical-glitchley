@@ -1,0 +1,30 @@
+{
+  "name": "mystical-glitchley",
+  "module": "src/cli.tsx",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "glitchley": "./src/cli.tsx"
+  },
+  "scripts": {
+    "start": "bun run src/cli.tsx",
+    "dev": "bun --watch src/cli.tsx",
+    "status": "bun run src/statusline.ts",
+    "install-claude": "bun run install.ts",
+    "uninstall-claude": "bun run uninstall.ts",
+    "uninstall-claude:purge": "bun run uninstall.ts --purge"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.14"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "ink": "^6.8.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.4"
+  }
+}
