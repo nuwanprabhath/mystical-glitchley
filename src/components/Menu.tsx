@@ -2,10 +2,11 @@ import React from "react";
 import { Box, Text, useInput } from "ink";
 
 interface MenuProps {
-  onAction: (action: "feed" | "play" | "sleep" | "quit") => void;
+  onAction: (action: "feed" | "play" | "sleep" | "chat" | "quit") => void;
+  chatAvailable: boolean;
 }
 
-export function Menu({ onAction }: MenuProps) {
+export function Menu({ onAction, chatAvailable }: MenuProps) {
   useInput((input, key) => {
     switch (input) {
       case "f":
@@ -16,6 +17,9 @@ export function Menu({ onAction }: MenuProps) {
         break;
       case "s":
         onAction("sleep");
+        break;
+      case "c":
+        if (chatAvailable) onAction("chat");
         break;
       case "q":
         onAction("quit");
@@ -38,6 +42,17 @@ export function Menu({ onAction }: MenuProps) {
         <Text bold color="magenta">[S]</Text>
         <Text>leep</Text>
       </Text>
+      {chatAvailable ? (
+        <Text>
+          <Text bold color="cyan">[C]</Text>
+          <Text>hat</Text>
+        </Text>
+      ) : (
+        <Text dimColor>
+          <Text>[C]hat</Text>
+          <Text dimColor> (no claude)</Text>
+        </Text>
+      )}
       <Text>
         <Text bold color="red">[Q]</Text>
         <Text>uit</Text>
