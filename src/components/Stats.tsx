@@ -10,7 +10,7 @@ interface StatsProps {
 function bar(value: number, width: number = 15): string {
   const filled = Math.round((value / 100) * width);
   const empty = width - filled;
-  return "█".repeat(filled) + "░".repeat(empty);
+  return "\u2588".repeat(filled) + "\u2591".repeat(empty);
 }
 
 function barColor(value: number, invert: boolean = false): string {
@@ -22,6 +22,9 @@ function barColor(value: number, invert: boolean = false): string {
 
 export function Stats({ state }: StatsProps) {
   const { hunger, happiness, energy, xp } = state.stats;
+  const stageLabel = state.stage === "transcended" && state.dynamicForms?.length
+    ? `FORM #${state.dynamicForms.length}`
+    : state.stage.toUpperCase();
 
   return (
     <Box flexDirection="column" paddingX={1} borderStyle="single" borderColor="gray">
@@ -30,7 +33,7 @@ export function Stats({ state }: StatsProps) {
           {state.name}
         </Text>
         <Text dimColor>
-          {state.stage.toUpperCase()} | {getAge(state.born)} old
+          {stageLabel} | {getAge(state.born)} old
         </Text>
       </Box>
 
@@ -58,6 +61,24 @@ export function Stats({ state }: StatsProps) {
         <Text dimColor> | Mood: </Text>
         <Text color="yellow">{state.mood}</Text>
       </Box>
+
+      {/* Personality line for transcended pets */}
+      {state.personality?.traits?.length > 0 && (
+        <Box gap={1}>
+          <Text dimColor>Traits  </Text>
+          <Text color="magenta">{state.personality.traits.slice(0, 4).join(", ")}</Text>
+        </Box>
+      )}
+
+      {/* Show current action if doing something autonomous */}
+      {state.currentAction !== "idle" && state.currentAction !== "eating" &&
+       state.currentAction !== "playing" && state.currentAction !== "sleeping" &&
+       state.currentAction !== "celebrating" && state.currentAction !== "coding" && (
+        <Box gap={1}>
+          <Text dimColor>Action  </Text>
+          <Text color="cyanBright" italic>{state.currentAction.replace(/_/g, " ")}</Text>
+        </Box>
+      )}
     </Box>
   );
 }

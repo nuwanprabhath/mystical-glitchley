@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
-import { getFrame } from "../art/frames.ts";
+import { getFrameDynamic } from "../art/frames.ts";
+import { getCurrentForm } from "../engine/evolution.ts";
+import { getAllActions } from "../engine/actions.ts";
 import type { PetState } from "../state/types.ts";
 
 interface PetProps {
@@ -16,7 +18,15 @@ export function Pet({ state }: PetProps) {
   }, []);
 
   const displayKey = state.currentAction !== "idle" ? state.currentAction : state.mood;
-  const frame = getFrame(state.stage, displayKey, tick);
+  const dynamicForm = getCurrentForm(state);
+
+  const frame = getFrameDynamic(
+    state.stage,
+    displayKey,
+    tick,
+    dynamicForm,
+    getAllActions(state), // includes built-ins + learned actions
+  );
 
   const stageColors: Record<string, string> = {
     egg: "white",
@@ -25,6 +35,7 @@ export function Pet({ state }: PetProps) {
     adult: "yellow",
     elder: "magenta",
     mythical: "redBright",
+    transcended: dynamicForm?.color ?? "cyanBright",
   };
 
   const color = stageColors[state.stage] ?? "white";
@@ -36,6 +47,11 @@ export function Pet({ state }: PetProps) {
           {line}
         </Text>
       ))}
+      {dynamicForm && (
+        <Text dimColor italic>
+          {"~ "}{dynamicForm.name}{" ~"}
+        </Text>
+      )}
     </Box>
   );
 }

@@ -23,13 +23,15 @@ export function tick(state: PetState): PetState {
   }
 
   const newStats = { hunger, happiness, energy, xp };
-  const newStage = deriveStage(xp);
+  const newStage = deriveStage(xp, state);
 
   // Clear action if duration expired
   let { currentAction, actionUntil } = state;
+  let idleSince = state.idleSince ?? now;
   if (now > actionUntil && currentAction !== "idle" && currentAction !== "sleeping") {
     currentAction = "idle";
     actionUntil = 0;
+    idleSince = now;
   }
 
   const updated: PetState = {
@@ -39,6 +41,7 @@ export function tick(state: PetState): PetState {
     currentAction,
     actionUntil,
     lastUpdated: now,
+    idleSince,
   };
 
   // Track evolution
@@ -132,12 +135,15 @@ export function deriveMood(state: PetState): PetMood {
   return "neutral";
 }
 
-export function deriveStage(xp: number): PetStage {
-  if (xp >= STAGE_XP_THRESHOLDS.mythical) return "mythical";
-  if (xp >= STAGE_XP_THRESHOLDS.elder) return "elder";
-  if (xp >= STAGE_XP_THRESHOLDS.adult) return "adult";
-  if (xp >= STAGE_XP_THRESHOLDS.teen) return "teen";
-  if (xp >= STAGE_XP_THRESHOLDS.baby) return "baby";
+export function deriveStage(xp: number, state?: PetState): PetStage {
+  // Once transcended, stay transcended (dynamic forms take over)
+  if (state?.stage === "transcended") return "transcended";
+  if (xp >= (STAGE_XP_THRESHOLDS.transcended ?? 5000)) return "transcended";
+  if (xp >= (STAGE_XP_THRESHOLDS.mythical ?? 3000)) return "mythical";
+  if (xp >= (STAGE_XP_THRESHOLDS.elder ?? 1200)) return "elder";
+  if (xp >= (STAGE_XP_THRESHOLDS.adult ?? 500)) return "adult";
+  if (xp >= (STAGE_XP_THRESHOLDS.teen ?? 200)) return "teen";
+  if (xp >= (STAGE_XP_THRESHOLDS.baby ?? 50)) return "baby";
   return "egg";
 }
 

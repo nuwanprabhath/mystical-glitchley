@@ -603,7 +603,76 @@ const FRAME_MAP: Partial<Record<FrameKey, ArtFrame[]>> = {
   mythical_celebrating: MYTHICAL_CELEBRATING,
   mythical_sleeping: ADULT_SLEEPING,
   mythical_sad: ADULT_SAD,
+
+  // Transcended (fallback — dynamic forms override this)
+  transcended_idle: MYTHICAL_CELEBRATING,
+  transcended_happy: MYTHICAL_CELEBRATING,
+  transcended_ecstatic: MYTHICAL_CELEBRATING,
+  transcended_celebrating: MYTHICAL_CELEBRATING,
+  transcended_sleeping: ADULT_SLEEPING,
+  transcended_sad: MYTHICAL_IDLE,
 };
+
+// ── Dynamic Form Support ───────────────────────────────
+
+import type { DynamicForm, LearnedAction } from "../state/types.ts";
+
+/**
+ * Convert a DynamicForm's ASCII frames to ArtFrame format.
+ */
+export function dynamicFormToArtFrames(form: DynamicForm): ArtFrame[] {
+  return form.asciiFrames.map(lines => ({
+    lines,
+    width: form.width,
+  }));
+}
+
+/**
+ * Convert a LearnedAction's ASCII frames to ArtFrame format (if it has custom art).
+ */
+export function actionToArtFrames(action: LearnedAction): ArtFrame[] | null {
+  if (!action.asciiFrames || action.asciiFrames.length === 0) return null;
+  const width = Math.max(...action.asciiFrames.flat().map(l => l.length));
+  return action.asciiFrames.map(lines => ({
+    lines,
+    width,
+  }));
+}
+
+/**
+ * Get frames with support for dynamic forms and learned actions.
+ * This is the main entry point — call this instead of getFrame() when
+ * dynamic forms are in play.
+ */
+export function getFrameDynamic(
+  stage: PetStage,
+  actionOrMood: PetAction | PetMood,
+  tick: number,
+  dynamicForm: DynamicForm | null,
+  learnedActions: LearnedAction[],
+): ArtFrame {
+  if (actionOrMood === "dead") return DEAD[0]!;
+
+  // If performing a learned action with custom art, use that
+  const activeAction = learnedActions.find(a => a.name === actionOrMood);
+  if (activeAction) {
+    const actionFrames = actionToArtFrames(activeAction);
+    if (actionFrames && actionFrames.length > 0) {
+      return actionFrames[tick % actionFrames.length]!;
+    }
+  }
+
+  // If there's an active dynamic form (transcended), use it
+  if (dynamicForm) {
+    const frames = dynamicFormToArtFrames(dynamicForm);
+    if (frames.length > 0) {
+      return frames[tick % frames.length]!;
+    }
+  }
+
+  // Fall back to static frame map
+  return getFrame(stage, actionOrMood, tick);
+}
 
 export function getFrames(stage: PetStage, actionOrMood: PetAction | PetMood): ArtFrame[] {
   if (actionOrMood === "dead") return DEAD;

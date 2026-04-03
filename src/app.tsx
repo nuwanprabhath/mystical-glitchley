@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Text, useApp } from "ink";
 import { Header } from "./components/Header.tsx";
 import { Pet } from "./components/Pet.tsx";
@@ -10,6 +10,7 @@ import { ChatInput } from "./components/ChatInput.tsx";
 import { loadState, saveState } from "./state/pet-state.ts";
 import { tick, feed, play, sleep, celebrate, deriveStage } from "./engine/game-loop.ts";
 import { isClaudeAvailable, chat } from "./engine/chat.ts";
+import { autonomyTick, evolvePersonality } from "./engine/autonomy.ts";
 import type { ChatMessage } from "./engine/chat.ts";
 import type { PetState } from "./state/types.ts";
 import { DEFAULT_STATE } from "./state/types.ts";
@@ -25,6 +26,8 @@ export function App() {
   const [claudeAvailable, setClaudeAvailable] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const autonomyRunning = useRef(false);
+  const petStateRef = useRef<PetState>(DEFAULT_STATE);
 
   // Check claude CLI availability on mount
   useEffect(() => {
@@ -42,7 +45,12 @@ export function App() {
     });
   }, []);
 
-  // Game tick every 5 seconds
+  // Keep ref in sync so async callbacks always see the latest state
+  useEffect(() => {
+    petStateRef.current = petState;
+  }, [petState]);
+
+  // Game tick every 5 seconds (stat decay + stage changes)
   useEffect(() => {
     if (!loaded) return;
     const interval = setInterval(() => {
@@ -63,6 +71,35 @@ export function App() {
     }, 5000);
     return () => clearInterval(interval);
   }, [loaded]);
+
+  // Autonomy tick every 8 seconds (spontaneous behaviors, learning, evolution)
+  // Uses petStateRef to always read fresh state without causing effect restarts
+  useEffect(() => {
+    if (!loaded) return;
+    const interval = setInterval(async () => {
+      if (autonomyRunning.current) return;
+      autonomyRunning.current = true;
+
+      try {
+        const currentState = petStateRef.current;
+        const result = await autonomyTick(currentState);
+
+        if (result.notification) {
+          notify(result.notification);
+        }
+
+        const finalState = await evolvePersonality(result.state);
+
+        setPetState(finalState);
+        saveState(finalState);
+      } catch {
+        // Autonomy failures are non-fatal
+      } finally {
+        autonomyRunning.current = false;
+      }
+    }, 8_000);
+    return () => clearInterval(interval);
+  }, [loaded]); // no petState dep — uses ref instead
 
   const notify = useCallback((msg: string) => {
     setNotification(null);
@@ -100,7 +137,7 @@ export function App() {
           default:
             updated = prev;
         }
-        const newStage = deriveStage(updated.stats.xp);
+        const newStage = deriveStage(updated.stats.xp, updated);
         if (newStage !== prev.stage) {
           updated = { ...updated, stage: newStage };
           setTimeout(() => notify(`${updated.name} evolved into ${newStage.toUpperCase()}!`), 3100);
@@ -175,12 +212,10 @@ export function App() {
           <Text dimColor>ESC to return to pet view</Text>
         </Box>
 
-        {/* Compact pet display */}
         <Box justifyContent="center" paddingY={1}>
           <Pet state={petState} />
         </Box>
 
-        {/* Chat area */}
         <Box
           flexDirection="column"
           borderStyle="single"
@@ -191,7 +226,6 @@ export function App() {
           <ChatHistory messages={chatMessages} maxVisible={6} />
         </Box>
 
-        {/* Input */}
         <Box marginX={2} marginTop={1}>
           <ChatInput
             onSubmit={handleChatSubmit}
